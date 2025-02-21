@@ -114,19 +114,15 @@ router.put('/', authMiddleware, async (req, res) => {
     })
 })
 
-router.get('/bulk', async (req, res) => {
+router.get('/bulk', authMiddleware, async (req, res) => {
     const filter = req.query.filter || ""
 
     const users = await User.find({
-        $or: [{
-            firstName: {
-                "$regex": filter
-            }
-        },{
-            lastName: {
-                "$regex": filter
-            }
-        }]
+        _id: { $ne: req.userId },
+        $or: [
+            { firstName: { "$regex": filter, "$options": "i" } },
+            { lastName: { "$regex": filter, "$options": "i" } }
+        ]
     })
 
     res.json({
@@ -138,5 +134,21 @@ router.get('/bulk', async (req, res) => {
         }))
     })
 })
+
+router.get('/me', authMiddleware, async (req, res) => {
+    const id = req.userId;
+    const user = await User.findById(id);
+    if (!user) {
+        return res.status(404).json({ message: "user not found" });
+    }
+    res.json({
+        user: {
+            _id: user._id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+        }
+    });
+});
 
 module.exports = router
